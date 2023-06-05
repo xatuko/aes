@@ -18,6 +18,14 @@ std::string vecToStr(const std::vector<uint8_t> & v)
     return str.str();
 }
 
+std::string vecToStr(const std::array<uint8_t, 4> & v)
+{
+    std::stringstream str;
+    for (auto & el : v)
+        str << std::hex << uint(el) << ' ';
+    return str.str();
+}
+
 std::string matrToStr(const matrix & m)
 {
     std::stringstream str;
@@ -99,83 +107,105 @@ std::array<uint8_t, 4> gFun(const std::array<uint8_t, 4> & w, uint8_t & rc)
 {
     auto ww = shiftLeft(w, 1); // Циклический сдвиг на 1 байт влево
 
+    std::cout << "left shift: " << vecToStr(ww) << std::endl;
+
     // Замена байт, полученных на прошлом шаге, в соответствии с таблицей s-box
     for (auto & el : ww)
         el = subBytes(el);
 
+    std::cout << "subytes: " << vecToStr(ww) << std::endl;
+
     ww[0] ^= rc; // суммирование с раундовой постоянной
 
-    rc *= 2;
+    std::cout << "+ rc: " << vecToStr(ww) << std::endl;
 
     return ww;
 }
 
 void keyExpansion()
 {
-    int r = 1;
-    uint8_t rc = 1;
+    int r = 0;
     for (int i = 4; i < ws.size(); i++)
     {
-        if (i % 4 == 0) ws[i] = sumWords(ws[i-4], gFun(ws[i-1], rc));
+        if (i % 4 == 0)
+        {
+            r++;
+            ws[i] = sumWords(ws[i-4], gFun(ws[i-1], rc[r-1]));
+        }
         else ws[i] = sumWords(ws[i-1], ws[i-4]);
+        std::cout << "i = " << std::dec << i << " DEBUG: ";
+        for (auto el : ws[i])
+            std::cout << std::hex << int(el) << ' ';
+        std::cout << std::endl;
+
     }
 }
 
 void round(matrix & state, const matrix & key, int rn)
 {
+    std::cout << "Round " << std::dec << rn << " key:" << std::endl;
+    int ii = 0;
+    for (auto & row : key)
+    {
+        std::cout << "w(" << std::dec << rn*4 + ii++ << "): ";
+        for (auto & el : row)
+            std::cout << std::hex << int(el) << ' ';
+        std::cout << std::endl;
+    }
+    // Pre round
+    // Only add inital key
     if (rn == 0)
     {
-
+        for (int i = 0; i < state.size(); i++)
+            for (int j = 0; j < state[i].size(); j++)
+                state[i][j] ^= key[i][j];
+        return;
     }
 
-    if (rn == 10)
-    {
+    // Sub bytes
+    for (int i = 0; i < state.size(); i++)
+        for (int j = 0; j < state[i].size(); j++)
+            state[i][j] = subBytes(state[i][j]);
 
-    }
+    shiftRows(state);
 
-    // subBytes
-    // shiftRows
-    // mixColumns
-    // addRoundKey
+    // Last round without with operation
+    if (rn != 10)
+        mixColumns(state);
+
+    // Add round key
+    for (int i = 0; i < state.size(); i++)
+        for (int j = 0; j < state[i].size(); j++)
+            state[i][j] ^= key[i][j];
 }
 
 int main(int, char**)
 {
-    std::vector<uint8_t> key = { 0x0f, 0x15, 0x71, 0xc9, 0x47, 0xd9, 0xe8, 0x59,
-                                 0x0c, 0xb7, 0xad, 0xdf, 0xaf, 0x7f, 0x67, 0x98
+    // std::vector<uint8_t> key = { '1', '2', '3', '4', '5', '6', '7', '8',
+    //                              '9', 'a', 'b', 'c', 'd', 'e', 'f', '0'
+    //                            };
+
+    // std::vector<uint8_t> key = { 0x0f, 0x15, 0x71, 0xc9, 0x47, 0xd9, 0xe8, 0x59,
+    //                              0x0c, 0xb7, 0xad, 0xdf, 0xaf, 0x7f, 0x67, 0x98
+    //                            };
+
+    std::vector<uint8_t> key = { 0x54, 0x68, 0x61, 0x74, 0x73, 0x20, 0x6d, 0x79,
+                                 0x20, 0x4b, 0x75, 0x6e, 0x67, 0x20, 0x46, 0x75
                                };
 
-    ws[0] = { key[0],  key[1],  key[2],  key[3]  };
-    ws[1] = { key[4],  key[5],  key[6],  key[7]  };
-    ws[2] = { key[8],  key[9],  key[10], key[11] };
-    ws[3] = { key[12], key[13], key[14], key[15] };
-
-    keyExpansion();
-
-    int i = 0;
-    for (auto & w : ws)
-    {
-        std::cout << "W" << std::dec << i << ": ";
-        for (auto & el : w)
-            std::cout << std::hex << uint(el) << ' ';
-        std::cout << std::endl;
-        i++;
-    }
-
-    auto ta = sumWords({0x04, 0x05, 0x06, 0x07}, {0x4, 0x5, 0x6, 0x7});
-    std::cout << "ta: ";
-    for (auto & el : ta)
-        std::cout << std::hex << uint(el) << ' ';
+    std::cout << "Char key: ";
+    for (auto & el : key)
+        std::cout << std::hex << int(el) << ' ';
     std::cout << std::endl;
 
-    // 10 раундов для ключа 128-бит
-    // 12 раундов для ключа 192-бит
-    // 14 раундов для ключа 256-бит
-    const int rounds = 10;
-
-    std::vector<uint8_t> input = { 7, 8, 9, 2, 3, 4, 7, 5,
-                                   1, 4, 6, 2, 5, 1, 6, 7
+    std::vector<uint8_t> input = { 0x54, 0x77, 0x6f, 0x20, 0x4f, 0x6e, 0x65, 0x20,
+                                   0x4e, 0x69, 0x6e, 0x65, 0x20, 0x54, 0x77, 0x6f
                                  };
+
+    std::cout << "Hex input: ";
+    for (auto & el : input)
+        std::cout << std::hex << int(el) << ' ';
+    std::cout << std::endl;
 
     matrix m_input;
 
@@ -192,16 +222,39 @@ int main(int, char**)
         }
     }
 
+    ws[0] = { key[0],  key[1],  key[2],  key[3]  };
+    ws[1] = { key[4],  key[5],  key[6],  key[7]  };
+    ws[2] = { key[8],  key[9],  key[10], key[11] };
+    ws[3] = { key[12], key[13], key[14], key[15] };
+
+    keyExpansion();
+
+    int rn = 0;
+    matrix rkey;
+
+    for (int i = 0; i <= 10; i++)
+    {
+        rkey = { ws[i*4], ws[i*4 + 1], ws[i*4 + 2], ws[i*4 + 3] };
+        round(m_input, rkey, i);
+    }
+
     std::cout << matrToStr(m_input);
-    mixColumns(m_input);
-    std::cout << std::endl << matrToStr(m_input);
-
-    std::cout << "Key: " << vecToStr(key) << std::endl;
-    std::cout << std::hex << uint(subBytes(0x0f)) << std::endl;
-
-    std::array<uint8_t, 4> test = {1, 2, 3, 4};
-    auto res = shiftLeft(test, 1);
-    for (auto & el : res)
-        std::cout << int(el) << ' ';
-    std::cout << std::endl;
+    return 0;
 }
+
+// 10 раундов для ключа 128-бит
+// 12 раундов для ключа 192-бит
+// 14 раундов для ключа 256-бит
+
+
+// 1) Расширение ключа - KeyExpansion;
+// 2) Начальный раунд - сложение state с основным ключом;
+// 3) 9 раундов шифрования, каждый из которых состоит из преобразований:
+//     · SubBytes
+//     · ShiftRows
+//     · MixColumns
+//     · AddRoundKey
+// 4) Финальный раунд, состоящий из преобразований:
+//     · SubBytes
+//     · ShiftRows
+//     · AddRoundKey

@@ -55,5 +55,8 @@ c_x = {
     03, 01, 01, 02
 };
 
+std::array<uint8_t, 10>
+rc = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36 };
+
 // round keys
 std::array<std::array<uint8_t, 4>, 44> ws;
