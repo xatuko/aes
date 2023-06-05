@@ -100,7 +100,8 @@ void mixColumns(matrix & m)
 std::array<uint8_t, 4> sumWords(const std::array<uint8_t, 4> & w1,
                                 const std::array<uint8_t, 4> & w2)
 {
-    return { w1[0]^w2[0], w1[1]^w2[1], w1[2]^w2[2], w1[3]^w2[3] };
+    return { uint8_t(w1[0]^w2[0]), uint8_t(w1[1]^w2[1]),
+             uint8_t(w1[2]^w2[2]), uint8_t(w1[3]^w2[3]) };
 }
 
 std::array<uint8_t, 4> gFun(const std::array<uint8_t, 4> & w, uint8_t & rc)
