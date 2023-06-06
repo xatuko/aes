@@ -38,6 +38,107 @@ std::string matrToStr(const matrix & m)
     return str.str();
 }
 
+// TODO: отрефакторить
+uint8_t dot(uint8_t v1, uint8_t v2)
+{
+    // k1 + k2*x + k3*x^2 + k4*x^3 + k5*x^4 + k6*x^5 + k7*x^6 + k8*x^7
+    std::array<uint16_t, 16> kv1 = { v1 & 0x01,       (v1 & 0x02) >> 1,
+                                    (v1 & 0x04) >> 2, (v1 & 0x08) >> 3,
+                                    (v1 & 0x10) >> 4, (v1 & 0x20) >> 5,
+                                    (v1 & 0x40) >> 6, (v1 & 0x80) >> 7,
+                                    0, 0, 0, 0, 0, 0, 0, 0
+                                   };
+
+    // k1 + k2*x + k3*x^2 + k4*x^3 + k5*x^4 + k6*x^5 + k7*x^6 + k8*x^7
+    std::array<uint16_t, 16> kv2 = { v2 & 0x01,       (v2 & 0x02) >> 1,
+                                    (v2 & 0x04) >> 2, (v2 & 0x08) >> 3,
+                                    (v2 & 0x10) >> 4, (v2 & 0x20) >> 5,
+                                    (v2 & 0x40) >> 6, (v2 & 0x80) >> 7,
+                                    0, 0, 0, 0, 0, 0, 0, 0
+                                   };
+
+    //                                0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
+    std::array<uint16_t, 16> poly = { 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0 };
+    std::array<int16_t, 16> tmp;
+    bool b = false;
+
+    std::vector<std::array<int16_t, 16>> parts;
+
+    // uint16_t tmp = 0;
+
+    // for (int i = 0; i < 8; i++)
+    // {
+    //     uint16_t part = 0;
+    //     if (v1 & (1 << i))
+    //         for (int j = 0; j < 8; j++)
+    //             if (v2 & (1 << j))
+    //                 part ^= (1 << i+j);
+    // }
+
+    for (int i = 0; i < kv1.size(); i++)
+    {
+        if (kv1[i] == 0)
+            continue;
+
+        tmp.fill(0);
+
+        uint16_t res = 0;
+        for (int j = 0; j < kv2.size(); j++)
+            if (kv2[j] != 0)
+            {
+                tmp[i+j]++;
+                b = true;
+            }
+
+        if (b) parts.push_back(tmp);
+        b = false;
+                // res ^= (0x1 << (i+j));
+        // parts[i] = res;
+    }
+
+    tmp.fill(0);
+    for (auto & part : parts)
+        for (int i = 0; i < part.size(); i++)
+            tmp[i] += part[i];
+
+
+
+    bool need_dirty = false;
+    for (int i = 8; i < tmp.size(); i++)
+        if (tmp[i] != 0)
+        {
+            need_dirty = true;
+            break;
+        }
+
+    if (need_dirty)
+        for (int i = 0; i < poly.size(); i++)
+            tmp[i] -= poly[i];
+
+    for (auto & el : tmp)
+        el = (abs(el) == 1) ? 1 : 0;
+
+    uint16_t res = 0;
+    for (int i = 0; i < 8; i++)
+        if (tmp[i] != 0)
+            res ^= (1 << i);
+
+    // std::cout << "result: " << std::hex << int(res) << std::endl;
+
+    return res;
+
+    // uint8_t k_v17 = (v1 & 0x80) >> 7, k_v16 = (v1 & 0x40) >> 6,
+    //         k_v15 = (v1 & 0x20) >> 5, k_v14 = (v1 & 0x10) >> 4,
+    //         k_v13 = (v1 & 0x08) >> 3, k_v12 = (v1 & 0x04) >> 2,
+    //         k_v11 = (v1 & 0x02) >> 1, k_v10 = v1 & 0x01;
+
+    // uint8_t k_v27 = (v2 & 0x80) >> 7, k_v26 = (v2 & 0x40) >> 6,
+    //         k_v25 = (v2 & 0x20) >> 5, k_v24 = (v2 & 0x10) >> 4,
+    //         k_v23 = (v2 & 0x08) >> 3, k_v22 = (v2 & 0x04) >> 2,
+    //         k_v21 = (v2 & 0x02) >> 1, k_v20 = v2 & 0x01;
+
+}
+
 //------------------------------------------------------------------------------
 
 uint8_t subBytes(uint8_t byte)
@@ -81,14 +182,13 @@ void mixColumns(matrix & m)
 
     for (int i = 0; i < m.size(); i++)
     {
-        res[0] = c_x[0][0] * m[0][i] + c_x[0][1] * m[1][i] +
-                 c_x[0][2] * m[2][i] + c_x[0][3] * m[3][i];
-        res[1] = c_x[1][0] * m[0][i] + c_x[1][1] * m[1][i] +
-                 c_x[1][2] * m[2][i] + c_x[1][3] * m[3][i];
-        res[2] = c_x[2][0] * m[0][i] + c_x[2][1] * m[1][i] +
-                 c_x[2][2] * m[2][i] + c_x[2][3] * m[3][i];
-        res[3] = c_x[3][0] * m[0][i] + c_x[3][1] * m[1][i] +
-                 c_x[3][2] * m[2][i] + c_x[3][3] * m[3][i];
+        res[0] = dot(c_x[0][0], m[0][i]) ^ dot(c_x[0][1], m[1][i]) ^ dot(c_x[0][2], m[2][i]) ^ dot(c_x[0][3], m[3][i]);
+
+        res[1] = dot(c_x[1][0], m[0][i]) ^ dot(c_x[1][1], m[1][i]) ^ dot(c_x[1][2], m[2][i]) ^ dot(c_x[1][3], m[3][i]);
+
+        res[2] = dot(c_x[2][0], m[0][i]) ^ dot(c_x[2][1], m[1][i]) ^ dot(c_x[2][2], m[2][i]) ^ dot(c_x[2][3], m[3][i]);
+
+        res[3] = dot(c_x[3][0], m[0][i]) ^ dot(c_x[3][1], m[1][i]) ^ dot(c_x[3][2], m[2][i]) ^ dot(c_x[3][3], m[3][i]);
 
         m[0][i] = res[0];
         m[1][i] = res[1];
@@ -108,17 +208,17 @@ std::array<uint8_t, 4> gFun(const std::array<uint8_t, 4> & w, uint8_t & rc)
 {
     auto ww = shiftLeft(w, 1); // Циклический сдвиг на 1 байт влево
 
-    std::cout << "left shift: " << vecToStr(ww) << std::endl;
+    // std::cout << "left shift: " << vecToStr(ww) << std::endl;
 
     // Замена байт, полученных на прошлом шаге, в соответствии с таблицей s-box
     for (auto & el : ww)
         el = subBytes(el);
 
-    std::cout << "subytes: " << vecToStr(ww) << std::endl;
+    // std::cout << "subytes: " << vecToStr(ww) << std::endl;
 
     ww[0] ^= rc; // суммирование с раундовой постоянной
 
-    std::cout << "+ rc: " << vecToStr(ww) << std::endl;
+    // std::cout << "+ rc: " << vecToStr(ww) << std::endl;
 
     return ww;
 }
@@ -134,25 +234,25 @@ void keyExpansion()
             ws[i] = sumWords(ws[i-4], gFun(ws[i-1], rc[r-1]));
         }
         else ws[i] = sumWords(ws[i-1], ws[i-4]);
-        std::cout << "i = " << std::dec << i << " DEBUG: ";
-        for (auto el : ws[i])
-            std::cout << std::hex << int(el) << ' ';
-        std::cout << std::endl;
+        // std::cout << "i = " << std::dec << i << " DEBUG: ";
+        // for (auto el : ws[i])
+        //     std::cout << std::hex << int(el) << ' ';
+        // std::cout << std::endl;
 
     }
 }
 
 void round(matrix & state, const matrix & key, int rn)
 {
-    std::cout << "Round " << std::dec << rn << " key:" << std::endl;
-    int ii = 0;
-    for (auto & row : key)
-    {
-        std::cout << "w(" << std::dec << rn*4 + ii++ << "): ";
-        for (auto & el : row)
-            std::cout << std::hex << int(el) << ' ';
-        std::cout << std::endl;
-    }
+    // std::cout << "Round " << std::dec << rn << " key:" << std::endl;
+    // int ii = 0;
+    // for (auto & row : key)
+    // {
+    //     std::cout << "w(" << std::dec << rn*4 + ii++ << "): ";
+    //     for (auto & el : row)
+    //         std::cout << std::hex << int(el) << ' ';
+    //     std::cout << std::endl;
+    // }
     // Pre round
     // Only add inital key
     if (rn == 0)
@@ -160,6 +260,8 @@ void round(matrix & state, const matrix & key, int rn)
         for (int i = 0; i < state.size(); i++)
             for (int j = 0; j < state[i].size(); j++)
                 state[i][j] ^= key[i][j];
+
+        std::cout << "State " << std::dec << rn << " : " << std::endl << matrToStr(state) << std::endl;
         return;
     }
 
@@ -168,28 +270,29 @@ void round(matrix & state, const matrix & key, int rn)
         for (int j = 0; j < state[i].size(); j++)
             state[i][j] = subBytes(state[i][j]);
 
+    std::cout << "State " << std::dec << rn << " : " << std::endl << matrToStr(state) << std::endl;
+
     shiftRows(state);
+
+    std::cout << "State " << std::dec << rn << " : " << std::endl << matrToStr(state) << std::endl;
 
     // Last round without with operation
     if (rn != 10)
         mixColumns(state);
+    else std::cout << "skip column mix" << std::endl;
+
+    std::cout << "State " << std::dec << rn << " : " << std::endl << matrToStr(state) << std::endl;
 
     // Add round key
     for (int i = 0; i < state.size(); i++)
         for (int j = 0; j < state[i].size(); j++)
             state[i][j] ^= key[i][j];
+
+    std::cout << "State " << std::dec << rn << " : " << std::endl << matrToStr(state) << std::endl;
 }
 
 int main(int, char**)
 {
-    // std::vector<uint8_t> key = { '1', '2', '3', '4', '5', '6', '7', '8',
-    //                              '9', 'a', 'b', 'c', 'd', 'e', 'f', '0'
-    //                            };
-
-    // std::vector<uint8_t> key = { 0x0f, 0x15, 0x71, 0xc9, 0x47, 0xd9, 0xe8, 0x59,
-    //                              0x0c, 0xb7, 0xad, 0xdf, 0xaf, 0x7f, 0x67, 0x98
-    //                            };
-
     std::vector<uint8_t> key = { 0x54, 0x68, 0x61, 0x74, 0x73, 0x20, 0x6d, 0x79,
                                  0x20, 0x4b, 0x75, 0x6e, 0x67, 0x20, 0x46, 0x75
                                };
@@ -235,7 +338,12 @@ int main(int, char**)
 
     for (int i = 0; i <= 10; i++)
     {
-        rkey = { ws[i*4], ws[i*4 + 1], ws[i*4 + 2], ws[i*4 + 3] };
+        rkey = { std::array<uint8_t,4>({ws[i*4][0], ws[i*4+1][0], ws[i*4+2][0], ws[i*4+3][0]}),
+                 std::array<uint8_t,4>({ws[i*4][1], ws[i*4+1][1], ws[i*4+2][1], ws[i*4+3][1]}),
+                 std::array<uint8_t,4>({ws[i*4][2], ws[i*4+1][2], ws[i*4+2][2], ws[i*4+3][2]}),
+                 std::array<uint8_t,4>({ws[i*4][3], ws[i*4+1][3], ws[i*4+2][3], ws[i*4+3][3]}),
+                //   ws[i*4], ws[i*4 + 1], ws[i*4 + 2], ws[i*4 + 3] };
+        };
         round(m_input, rkey, i);
     }
 
