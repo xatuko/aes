@@ -1,3 +1,6 @@
+#ifndef TABLES_HPP
+#define TABLES_HPP
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -5,7 +8,7 @@
 #include <array>
 
 // AES S-Box
-std::array<std::array<uint8_t,16>,16>
+static std::array<std::array<uint8_t,16>,16>
 s_box = {
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
@@ -26,7 +29,7 @@ s_box = {
 };
 
 // AES inverse S-Box
-std::array<std::array<uint8_t,16>,16>
+static std::array<std::array<uint8_t,16>,16>
 is_box = {
     0x52, 0x09, 0x6A, 0xD5, 0x30, 0x36, 0xA5, 0x38, 0xBF, 0x40, 0xA3, 0x9E, 0x81, 0xF3, 0xD7, 0xFB,
     0x7C, 0xE3, 0x39, 0x82, 0x9B, 0x2F, 0xFF, 0x87, 0x34, 0x8E, 0x43, 0x44, 0xC4, 0xDE, 0xE9, 0xCB,
@@ -47,7 +50,7 @@ is_box = {
 };
 
 // c(x)
-std::array<std::array<uint8_t, 4>,4>
+static std::array<std::array<uint8_t, 4>,4>
 c_x = {
     02, 03, 01, 01,
     01, 02, 03, 01,
@@ -55,8 +58,28 @@ c_x = {
     03, 01, 01, 02
 };
 
-std::array<uint8_t, 10>
+static std::array<uint8_t, 10>
 rc = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36 };
 
 // round keys
-std::array<std::array<uint8_t, 4>, 44> ws;
+static std::array<std::array<uint8_t, 4>, 44> ws;
+
+#endif // TABLES_HPP
+
+
+// 10 раундов для ключа 128-бит
+// 12 раундов для ключа 192-бит
+// 14 раундов для ключа 256-бит
+
+
+// 1) Расширение ключа - KeyExpansion;
+// 2) Начальный раунд - сложение state с основным ключом;
+// 3) 9 раундов шифрования, каждый из которых состоит из преобразований:
+//     · SubBytes
+//     · ShiftRows
+//     · MixColumns
+//     · AddRoundKey
+// 4) Финальный раунд, состоящий из преобразований:
+//     · SubBytes
+//     · ShiftRows
+//     · AddRoundKey
