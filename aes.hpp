@@ -3,9 +3,10 @@
 
 #include "tables.hpp"
 
-using blck = std::array<uint8_t, 16>;
-using word = std::array<uint8_t, 4>;
-using matrix = std::array<word, 4>;
+using blck      = std::array<uint8_t, 16>;
+using word      = std::array<uint8_t, 4>;
+using matrix    = std::array<word, 4>;
+using bytearray = std::vector<uint8_t>;
 
 enum class MODE : uint8_t
 {
@@ -22,12 +23,20 @@ class Aes
     Aes() { };
     ~Aes() { };
 
-    blck encryptBlck(const blck & input, const blck & key);
-    blck decryptBlck(const blck & input, const blck & key);
+    // void setKey(const blck & key);
+    bytearray encrypt(bytearray input, const MODE & mode, const blck & iv);
+    bytearray decrypt(bytearray input, const MODE & mode, const blck & iv);
+
+    void setKey(const blck & key)
+    { m_key = key; keyExpansion(); m_have_key = true; }
+
+    blck encryptBlck(const blck & input);
+    blck decryptBlck(const blck & input);
 
   private:
   // Fields
     blck m_key;
+    bool m_have_key { false };
     MODE m_mode { MODE::ECB };
 
   // Methods

@@ -66,7 +66,7 @@ uint8_t Aes::dot(uint8_t v1, uint8_t v2)
     uint16_t res = 0;
     for (int i = 0; i < 8; i++)
         if (tmp[i] != 0)
-            res ^= (1 << i);
+            res += (1 << i);
 
     return res;
 }
@@ -187,6 +187,11 @@ word Aes::sumWords(const word & w1, const word & w2)
 
 void Aes::keyExpansion()
 {
+    ws[0] = { m_key[0],  m_key[1],  m_key[2],  m_key[3]  };
+    ws[1] = { m_key[4],  m_key[5],  m_key[6],  m_key[7]  };
+    ws[2] = { m_key[8],  m_key[9],  m_key[10], m_key[11] };
+    ws[3] = { m_key[12], m_key[13], m_key[14], m_key[15] };
+
     for (int i = 4; i < ws.size(); i++)
     {
         if (i % 4 == 0) ws[i] = sumWords(ws[i-4], gFun(ws[i-1], rc[i/4-1]));
@@ -227,20 +232,15 @@ matrix Aes::encryptRound(const matrix & state, const matrix & key, const int & r
     return tmp;
 }
 
-blck Aes::encryptBlck(const blck & input, const blck & key)
+blck Aes::encryptBlck(const blck & input)
 {
+    if (!m_have_key) return { };
+
     matrix tmp = { input[0], input[4], input[8],  input[12],
                    input[1], input[5], input[9],  input[13],
                    input[2], input[6], input[10], input[14],
                    input[3], input[7], input[11], input[15]
                  };
-
-    ws[0] = { key[0],  key[1],  key[2],  key[3]  };
-    ws[1] = { key[4],  key[5],  key[6],  key[7]  };
-    ws[2] = { key[8],  key[9],  key[10], key[11] };
-    ws[3] = { key[12], key[13], key[14], key[15] };
-
-    keyExpansion();
 
     matrix r_key;
 
@@ -295,8 +295,10 @@ matrix Aes::decryptRound(const matrix & state, const matrix & key, const int & r
     return tmp;
 }
 
-blck Aes::decryptBlck(const blck & input, const blck & key)
+blck Aes::decryptBlck(const blck & input)
 {
+    if (!m_have_key) return { };
+
     matrix tmp = { input[0], input[4], input[8],  input[12],
                    input[1], input[5], input[9],  input[13],
                    input[2], input[6], input[10], input[14],
@@ -323,4 +325,101 @@ blck Aes::decryptBlck(const blck & input, const blck & key)
             res[4*i+j] = tmp[j][i];
 
     return res;
+}
+
+bytearray Aes::encrypt(bytearray input, const MODE & mode, const blck & iv)
+{
+    if (input.size() % iv.size() != 0)
+        input.insert(input.end(), (iv.size()-(input.size()%iv.size())), 0);
+
+    bytearray output;
+    blck tmp;
+    auto it = input.begin();
+
+    switch (mode)
+    {
+        case MODE::ECB:
+            for (int i = 0; i < input.size(); i += iv.size())
+            {
+                for (int j = 0; j < iv.size(); j++)
+                    tmp[j] = input[i+j];
+
+                tmp = encryptBlck(tmp);
+                for (auto & el : tmp)
+                    output.push_back(el);
+            }
+            break;
+
+        case MODE::CBC:
+        {
+            for (int i = 0; i < input.size(); i += iv.size())
+            {
+                for (int j = 0; j < iv.size(); j++)
+                    if (i == 0) tmp[j] = input[i+j] ^ iv[j];
+                    else tmp[j] = input[i+j] ^ tmp[j];
+
+                tmp = encryptBlck(tmp);
+                for (auto & el : tmp)
+                    output.push_back(el);
+            }
+        }
+            break;
+        default:
+            std::cout << "Requested mode not supported" << std::endl;
+            break;
+    }
+
+    return output;
+}
+
+bytearray Aes::decrypt(bytearray input, const MODE & mode, const blck & iv)
+{
+    bytearray output;
+    blck tmp;
+
+    switch (mode)
+    {
+        case MODE::ECB:
+        {
+            if (input.size() % iv.size() != 0)
+            {
+                std::cout << "Wrong input size" << std::endl;
+                break;
+            }
+
+            for (int i = 0; i < input.size(); i += iv.size())
+            {
+                for (int j = 0; j < iv.size(); j++)
+                    tmp[j] = input[i+j];
+
+                tmp = decryptBlck(tmp);
+
+                for (auto & el : tmp)
+                    output.push_back(el);
+            }
+        }
+            break;
+        case MODE::CBC:
+        {
+            blck prev_in;
+            for (int i = 0; i < input.size(); i += iv.size())
+            {
+                prev_in = tmp;
+                for (int j = 0; j < iv.size(); j++)
+                    tmp[j] = input[j+i];
+
+                tmp = decryptBlck(tmp);
+
+                for (int j = 0; j < tmp.size(); j++)
+                    if (i == 0) output.push_back(tmp[j] ^ iv[j]);
+                    else output.push_back(tmp[j]);
+            }
+        }
+            break;
+        default:
+            std::cout << "Requested mode not supported" << std::endl;
+            break;
+    }
+
+    return output;
 }
