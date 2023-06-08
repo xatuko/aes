@@ -2,19 +2,21 @@
 
 uint8_t Aes::dot(uint8_t v1, uint8_t v2)
 {
+    // x^8 = x^4 + x^3 + x + 1
+
     // k1 + k2*x + k3*x^2 + k4*x^3 + k5*x^4 + k6*x^5 + k7*x^6 + k8*x^7
-    std::array<uint16_t, 16> kv1 = { v1 & 0x01,       (v1 & 0x02) >> 1,
-                                    (v1 & 0x04) >> 2, (v1 & 0x08) >> 3,
-                                    (v1 & 0x10) >> 4, (v1 & 0x20) >> 5,
-                                    (v1 & 0x40) >> 6, (v1 & 0x80) >> 7,
-                                    0, 0, 0, 0, 0, 0, 0, 0
+    std::array<uint16_t, 16> kv1 = { uint16_t(v1 & 0x01),        uint16_t((v1 & 0x02) >> 1),
+                                     uint16_t((v1 & 0x04) >> 2), uint16_t((v1 & 0x08) >> 3),
+                                     uint16_t((v1 & 0x10) >> 4), uint16_t((v1 & 0x20) >> 5),
+                                     uint16_t((v1 & 0x40) >> 6), uint16_t((v1 & 0x80) >> 7),
+                                     0, 0, 0, 0, 0, 0, 0, 0
                                    };
 
     // k1 + k2*x + k3*x^2 + k4*x^3 + k5*x^4 + k6*x^5 + k7*x^6 + k8*x^7
-    std::array<uint16_t, 16> kv2 = { v2 & 0x01,       (v2 & 0x02) >> 1,
-                                    (v2 & 0x04) >> 2, (v2 & 0x08) >> 3,
-                                    (v2 & 0x10) >> 4, (v2 & 0x20) >> 5,
-                                    (v2 & 0x40) >> 6, (v2 & 0x80) >> 7,
+    std::array<uint16_t, 16> kv2 = { uint16_t(v2 & 0x01),        uint16_t((v2 & 0x02) >> 1),
+                                     uint16_t((v2 & 0x04) >> 2), uint16_t((v2 & 0x08) >> 3),
+                                     uint16_t((v2 & 0x10) >> 4), uint16_t((v2 & 0x20) >> 5),
+                                     uint16_t((v2 & 0x40) >> 6), uint16_t((v2 & 0x80) >> 7),
                                     0, 0, 0, 0, 0, 0, 0, 0
                                    };
 
@@ -48,22 +50,18 @@ uint8_t Aes::dot(uint8_t v1, uint8_t v2)
         for (int i = 0; i < part.size(); i++)
             tmp[i] += part[i];
 
-
-
-    bool need_dirty = false;
     for (int i = 8; i < tmp.size(); i++)
-        if (tmp[i] != 0)
-        {
-            need_dirty = true;
-            break;
-        }
+    {
+        if (tmp[i] == 0 || tmp[i] % 2 == 0) continue;
 
-    if (need_dirty)
-        for (int i = 0; i < poly.size(); i++)
-            tmp[i] -= poly[i];
+        tmp[4+(i-8)]++;
+        tmp[3+(i-8)]++;
+        tmp[1+(i-8)]++;
+        tmp[(i-8)]++;
+    }
 
     for (auto & el : tmp)
-        el = (abs(el) == 1) ? 1 : 0;
+        el = (el % 2 == 0) ? 0 : 1;
 
     uint16_t res = 0;
     for (int i = 0; i < 8; i++)
@@ -85,6 +83,18 @@ word Aes::shiftLeft(const word & w, const int & n)
     return res;
 }
 
+word Aes::shiftRight(const word & w, const int & n)
+{
+    word res;
+    int idx;
+    for (int i = 0; i < w.size(); i++)
+    {
+        idx = (i + n) < w.size() ? i + n : i + n - w.size();
+        res[idx] = w[i];
+    }
+    return res;
+}
+
 matrix Aes::shiftRows(const matrix & m)
 {
     matrix res;
@@ -92,6 +102,17 @@ matrix Aes::shiftRows(const matrix & m)
     res[1] = shiftLeft(m[1], 1);
     res[2] = shiftLeft(m[2], 2);
     res[3] = shiftLeft(m[3], 3);
+    return res;
+}
+
+matrix Aes::invShiftRows(const matrix & m)
+{
+    matrix res;
+    res[0] = m[0];
+    res[1] = shiftRight(m[1], 1);
+    res[2] = shiftRight(m[2], 2);
+    res[3] = shiftRight(m[3], 3);
+
     return res;
 }
 
@@ -110,6 +131,31 @@ matrix Aes::mixColumns(const matrix & m)
                  dot(c_x[2][2], m[2][i]) ^ dot(c_x[2][3], m[3][i]);
         tmp[3] = dot(c_x[3][0], m[0][i]) ^ dot(c_x[3][1], m[1][i]) ^
                  dot(c_x[3][2], m[2][i]) ^ dot(c_x[3][3], m[3][i]);
+
+        res[0][i] = tmp[0];
+        res[1][i] = tmp[1];
+        res[2][i] = tmp[2];
+        res[3][i] = tmp[3];
+    }
+
+    return res;
+}
+
+matrix Aes::invMixColumns(const matrix & m)
+{
+    word tmp;
+    matrix res;
+
+    for (int i = 0; i < m.size(); i++)
+    {
+        tmp[0] = dot(ic_x[0][0], m[0][i]) ^ dot(ic_x[0][1], m[1][i]) ^
+                 dot(ic_x[0][2], m[2][i]) ^ dot(ic_x[0][3], m[3][i]);
+        tmp[1] = dot(ic_x[1][0], m[0][i]) ^ dot(ic_x[1][1], m[1][i]) ^
+                 dot(ic_x[1][2], m[2][i]) ^ dot(ic_x[1][3], m[3][i]);
+        tmp[2] = dot(ic_x[2][0], m[0][i]) ^ dot(ic_x[2][1], m[1][i]) ^
+                 dot(ic_x[2][2], m[2][i]) ^ dot(ic_x[2][3], m[3][i]);
+        tmp[3] = dot(ic_x[3][0], m[0][i]) ^ dot(ic_x[3][1], m[1][i]) ^
+                 dot(ic_x[3][2], m[2][i]) ^ dot(ic_x[3][3], m[3][i]);
 
         res[0][i] = tmp[0];
         res[1][i] = tmp[1];
@@ -148,7 +194,7 @@ void Aes::keyExpansion()
     }
 }
 
-matrix Aes::round(const matrix & state, const matrix & key, const int & rn)
+matrix Aes::encryptRound(const matrix & state, const matrix & key, const int & rn)
 {
     matrix tmp = state;
     // Pre round
@@ -205,7 +251,70 @@ blck Aes::encryptBlck(const blck & input, const blck & key)
                   word({ws[i*4][2], ws[i*4+1][2], ws[i*4+2][2], ws[i*4+3][2]}),
                   word({ws[i*4][3], ws[i*4+1][3], ws[i*4+2][3], ws[i*4+3][3]}),
                 };
-        tmp = round(tmp, r_key, i);
+
+        tmp = encryptRound(tmp, r_key, i);
+    }
+
+    blck res;
+    for (int i = 0; i < tmp.size(); i++)
+        for (int j = 0; j < tmp[i].size(); j++)
+            res[4*i+j] = tmp[j][i];
+
+    return res;
+}
+
+matrix Aes::decryptRound(const matrix & state, const matrix & key, const int & rn)
+{
+    matrix tmp = state;
+    // Pre round
+    // Only add inital key
+    if (rn == 0)
+    {
+        for (int i = 0; i < state.size(); i++)
+            for (int j = 0; j < state[i].size(); j++)
+                tmp[i][j] ^= key[i][j];
+        return tmp;
+    }
+
+    tmp = invShiftRows(tmp);
+
+    // Inv Sub bytes
+    for (int i = 0; i < tmp.size(); i++)
+        for (int j = 0; j < tmp[i].size(); j++)
+            tmp[i][j] = invSubBytes(tmp[i][j]);
+
+    // Add round key
+    for (int i = 0; i < tmp.size(); i++)
+        for (int j = 0; j < tmp[i].size(); j++)
+            tmp[i][j] ^= key[i][j];
+
+    // Last round without this operation
+    if (rn != 10)
+        tmp = invMixColumns(tmp);
+
+    return tmp;
+}
+
+blck Aes::decryptBlck(const blck & input, const blck & key)
+{
+    matrix tmp = { input[0], input[4], input[8],  input[12],
+                   input[1], input[5], input[9],  input[13],
+                   input[2], input[6], input[10], input[14],
+                   input[3], input[7], input[11], input[15]
+                 };
+
+    matrix r_key;
+
+    for (int i = 0; i <= 10; i++)
+    {
+        int idx = ws.size() - 4 - i*4;
+        r_key = { word({ws[idx][0], ws[idx+1][0], ws[idx+2][0], ws[idx+3][0]}),
+                  word({ws[idx][1], ws[idx+1][1], ws[idx+2][1], ws[idx+3][1]}),
+                  word({ws[idx][2], ws[idx+1][2], ws[idx+2][2], ws[idx+3][2]}),
+                  word({ws[idx][3], ws[idx+1][3], ws[idx+2][3], ws[idx+3][3]}),
+                };
+
+        tmp = decryptRound(tmp, r_key, i);
     }
 
     blck res;

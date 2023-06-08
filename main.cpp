@@ -22,5 +22,12 @@ int main(int,char**)
         std::cout << std::hex << int(el) << ' ';
     std::cout << std::endl;
 
+    res = aes.decryptBlck(res, key);
+
+    std::cout << "Decrypt: ";
+    for (auto & el : res)
+        std::cout << std::hex << int(el) << ' ';
+    std::cout << std::endl;
+
     return 0;
 }

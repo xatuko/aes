@@ -22,7 +22,8 @@ class Aes
     Aes() { };
     ~Aes() { };
 
-    std::array<uint8_t,16> encryptBlck(const blck & input, const blck & key);
+    blck encryptBlck(const blck & input, const blck & key);
+    blck decryptBlck(const blck & input, const blck & key);
 
   private:
   // Fields
@@ -35,12 +36,20 @@ class Aes
     uint8_t subBytes(const uint8_t & byte)
     { return s_box[byte >> 4][byte & 0xF]; }
 
+    uint8_t invSubBytes(const uint8_t & byte)
+    { return is_box[byte >> 4][byte & 0xF]; }
+
     word shiftLeft(const word & arr, const int & n);
+    word shiftRight(const word & arr, const int & n);
     word gFun(const word & w, const uint8_t & rc);
     word sumWords(const word & w1, const word & w2);
     matrix shiftRows(const matrix & m);
+    matrix invShiftRows(const matrix & m);
     matrix mixColumns(const matrix & m);
-    matrix round(const matrix & state, const matrix & key, const int & rn);
+    matrix invMixColumns(const matrix & m);
+
+    matrix encryptRound(const matrix & state, const matrix & key, const int & rn);
+    matrix decryptRound(const matrix & state, const matrix & key, const int & rn);
     void keyExpansion();
 };
 
