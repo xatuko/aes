@@ -23,7 +23,6 @@ class Aes
     Aes() { };
     ~Aes() { };
 
-    // void setKey(const blck & key);
     bytearray encrypt(bytearray input, const MODE & mode);
     bytearray decrypt(bytearray input, const MODE & mode);
 
@@ -41,6 +40,8 @@ class Aes
     bool m_have_iv  { false };
 
     MODE m_mode { MODE::ECB };
+
+    std::array<std::array<uint8_t, 4>, 44> m_ws;
 
   // Methods
     uint8_t dot(uint8_t v1, uint8_t v2);

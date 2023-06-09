@@ -21,6 +21,7 @@ uint8_t Aes::dot(uint8_t v1, uint8_t v2)
     return tmp;
 }
 
+// old realization
 // uint8_t Aes::dot2(uint8_t v1, uint8_t v2)
 // {
 //     // x^8 = x^4 + x^3 + x + 1
@@ -216,15 +217,15 @@ matrix Aes::sumMatrix(const matrix & m1, const matrix & m2)
 
 void Aes::keyExpansion()
 {
-    ws[0] = { m_key[0],  m_key[1],  m_key[2],  m_key[3]  };
-    ws[1] = { m_key[4],  m_key[5],  m_key[6],  m_key[7]  };
-    ws[2] = { m_key[8],  m_key[9],  m_key[10], m_key[11] };
-    ws[3] = { m_key[12], m_key[13], m_key[14], m_key[15] };
+    m_ws[0] = { m_key[0],  m_key[1],  m_key[2],  m_key[3]  };
+    m_ws[1] = { m_key[4],  m_key[5],  m_key[6],  m_key[7]  };
+    m_ws[2] = { m_key[8],  m_key[9],  m_key[10], m_key[11] };
+    m_ws[3] = { m_key[12], m_key[13], m_key[14], m_key[15] };
 
-    for (int i = 4; i < ws.size(); i++)
+    for (int i = 4; i < m_ws.size(); i++)
     {
-        if (i % 4 == 0) ws[i] = sumWords(ws[i-4], gFun(ws[i-1], rc[i/4-1]));
-        else ws[i] = sumWords(ws[i-1], ws[i-4]);
+        if (i % 4 == 0) m_ws[i] = sumWords(m_ws[i-4], gFun(m_ws[i-1], rc[i/4-1]));
+        else m_ws[i] = sumWords(m_ws[i-1], m_ws[i-4]);
     }
 }
 
@@ -264,12 +265,12 @@ blck Aes::encryptBlck(const blck & input)
 
     matrix r_key;
 
-    for (int i = 0; i <= 10; i++)
+    for (int i = 0; i <= rounds; i++)
     {
-        r_key = { word({ws[i*4][0], ws[i*4+1][0], ws[i*4+2][0], ws[i*4+3][0]}),
-                  word({ws[i*4][1], ws[i*4+1][1], ws[i*4+2][1], ws[i*4+3][1]}),
-                  word({ws[i*4][2], ws[i*4+1][2], ws[i*4+2][2], ws[i*4+3][2]}),
-                  word({ws[i*4][3], ws[i*4+1][3], ws[i*4+2][3], ws[i*4+3][3]}),
+        r_key = { word({m_ws[i*4][0], m_ws[i*4+1][0], m_ws[i*4+2][0], m_ws[i*4+3][0]}),
+                  word({m_ws[i*4][1], m_ws[i*4+1][1], m_ws[i*4+2][1], m_ws[i*4+3][1]}),
+                  word({m_ws[i*4][2], m_ws[i*4+1][2], m_ws[i*4+2][2], m_ws[i*4+3][2]}),
+                  word({m_ws[i*4][3], m_ws[i*4+1][3], m_ws[i*4+2][3], m_ws[i*4+3][3]}),
                 };
 
         tmp = encryptRound(tmp, r_key, i);
@@ -319,13 +320,13 @@ blck Aes::decryptBlck(const blck & input)
 
     matrix r_key;
 
-    for (int i = 0; i <= 10; i++)
+    for (int i = 0; i <= rounds; i++)
     {
-        int idx = ws.size() - 4 - i*4;
-        r_key = { word({ws[idx][0], ws[idx+1][0], ws[idx+2][0], ws[idx+3][0]}),
-                  word({ws[idx][1], ws[idx+1][1], ws[idx+2][1], ws[idx+3][1]}),
-                  word({ws[idx][2], ws[idx+1][2], ws[idx+2][2], ws[idx+3][2]}),
-                  word({ws[idx][3], ws[idx+1][3], ws[idx+2][3], ws[idx+3][3]}),
+        int idx = m_ws.size() - 4 - i*4;
+        r_key = { word({m_ws[idx][0], m_ws[idx+1][0], m_ws[idx+2][0], m_ws[idx+3][0]}),
+                  word({m_ws[idx][1], m_ws[idx+1][1], m_ws[idx+2][1], m_ws[idx+3][1]}),
+                  word({m_ws[idx][2], m_ws[idx+1][2], m_ws[idx+2][2], m_ws[idx+3][2]}),
+                  word({m_ws[idx][3], m_ws[idx+1][3], m_ws[idx+2][3], m_ws[idx+3][3]}),
                 };
 
         tmp = decryptRound(tmp, r_key, i);
