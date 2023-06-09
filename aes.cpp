@@ -185,6 +185,14 @@ word Aes::sumWords(const word & w1, const word & w2)
              uint8_t(w1[2]^w2[2]), uint8_t(w1[3]^w2[3]) };
 }
 
+matrix Aes::sumMatrix(const matrix & m1, const matrix & m2)
+{
+    matrix res;
+    for (int i = 0; i < m1.size(); i++)
+        res[i] = sumWords(m1[i], m2[i]);
+    return res;
+}
+
 void Aes::keyExpansion()
 {
     ws[0] = { m_key[0],  m_key[1],  m_key[2],  m_key[3]  };
@@ -205,12 +213,7 @@ matrix Aes::encryptRound(const matrix & state, const matrix & key, const int & r
     // Pre round
     // Only add inital key
     if (rn == 0)
-    {
-        for (int i = 0; i < state.size(); i++)
-            for (int j = 0; j < state[i].size(); j++)
-                tmp[i][j] ^= key[i][j];
-        return tmp;
-    }
+        return sumMatrix(state, key);
 
     // Sub bytes
     for (int i = 0; i < tmp.size(); i++)
@@ -219,15 +222,12 @@ matrix Aes::encryptRound(const matrix & state, const matrix & key, const int & r
 
     tmp = shiftRows(tmp);
 
-
     // Last round without this operation
     if (rn != 10)
         tmp = mixColumns(tmp);
 
     // Add round key
-    for (int i = 0; i < tmp.size(); i++)
-        for (int j = 0; j < tmp[i].size(); j++)
-            tmp[i][j] ^= key[i][j];
+    tmp = sumMatrix(tmp, key);
 
     return tmp;
 }
@@ -269,12 +269,7 @@ matrix Aes::decryptRound(const matrix & state, const matrix & key, const int & r
     // Pre round
     // Only add inital key
     if (rn == 0)
-    {
-        for (int i = 0; i < state.size(); i++)
-            for (int j = 0; j < state[i].size(); j++)
-                tmp[i][j] ^= key[i][j];
-        return tmp;
-    }
+        return sumMatrix(state, key);
 
     tmp = invShiftRows(tmp);
 
@@ -284,9 +279,7 @@ matrix Aes::decryptRound(const matrix & state, const matrix & key, const int & r
             tmp[i][j] = invSubBytes(tmp[i][j]);
 
     // Add round key
-    for (int i = 0; i < tmp.size(); i++)
-        for (int j = 0; j < tmp[i].size(); j++)
-            tmp[i][j] ^= key[i][j];
+    tmp = sumMatrix(tmp, key);
 
     // Last round without this operation
     if (rn != 10)

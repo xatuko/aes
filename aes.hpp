@@ -11,10 +11,10 @@ using bytearray = std::vector<uint8_t>;
 enum class MODE : uint8_t
 {
     ECB = 0,
-    CBC, // not supproted yet
-    CFB, // not supproted yet
-    OFB, // not supproted yet
-    CTR  // not supproted yet
+    CBC,
+    CFB, // not supproted
+    OFB, // not supproted
+    CTR  // not supproted
 };
 
 class Aes
@@ -29,9 +29,6 @@ class Aes
 
     void setKey(const blck & key)
     { m_key = key; keyExpansion(); m_have_key = true; }
-
-    blck encryptBlck(const blck & input);
-    blck decryptBlck(const blck & input);
 
   private:
   // Fields
@@ -52,13 +49,19 @@ class Aes
     word shiftRight(const word & arr, const int & n);
     word gFun(const word & w, const uint8_t & rc);
     word sumWords(const word & w1, const word & w2);
+    matrix sumMatrix(const matrix & m1, const matrix & m2);
+
     matrix shiftRows(const matrix & m);
     matrix invShiftRows(const matrix & m);
     matrix mixColumns(const matrix & m);
     matrix invMixColumns(const matrix & m);
 
+    blck encryptBlck(const blck & input);
+    blck decryptBlck(const blck & input);
+
     matrix encryptRound(const matrix & state, const matrix & key, const int & rn);
     matrix decryptRound(const matrix & state, const matrix & key, const int & rn);
+
     void keyExpansion();
 };
 
