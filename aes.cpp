@@ -2,74 +2,95 @@
 
 uint8_t Aes::dot(uint8_t v1, uint8_t v2)
 {
-    // x^8 = x^4 + x^3 + x + 1
-
-    // k1 + k2*x + k3*x^2 + k4*x^3 + k5*x^4 + k6*x^5 + k7*x^6 + k8*x^7
-    std::array<uint16_t, 16> kv1 = { uint16_t(v1 & 0x01),        uint16_t((v1 & 0x02) >> 1),
-                                     uint16_t((v1 & 0x04) >> 2), uint16_t((v1 & 0x08) >> 3),
-                                     uint16_t((v1 & 0x10) >> 4), uint16_t((v1 & 0x20) >> 5),
-                                     uint16_t((v1 & 0x40) >> 6), uint16_t((v1 & 0x80) >> 7),
-                                     0, 0, 0, 0, 0, 0, 0, 0
-                                   };
-
-    // k1 + k2*x + k3*x^2 + k4*x^3 + k5*x^4 + k6*x^5 + k7*x^6 + k8*x^7
-    std::array<uint16_t, 16> kv2 = { uint16_t(v2 & 0x01),        uint16_t((v2 & 0x02) >> 1),
-                                     uint16_t((v2 & 0x04) >> 2), uint16_t((v2 & 0x08) >> 3),
-                                     uint16_t((v2 & 0x10) >> 4), uint16_t((v2 & 0x20) >> 5),
-                                     uint16_t((v2 & 0x40) >> 6), uint16_t((v2 & 0x80) >> 7),
-                                    0, 0, 0, 0, 0, 0, 0, 0
-                                   };
-
-    //                                0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
-    std::array<uint16_t, 16> poly = { 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0 };
-    std::array<int16_t, 16> tmp;
-    bool b = false;
-
-    std::vector<std::array<int16_t, 16>> parts;
-    for (int i = 0; i < kv1.size(); i++)
+    uint16_t poly = 0b100011011; // x^8 + x^4 + x^3 + x + 1
+    uint16_t tmp  = 0;
+    for (int i = 0; i < 16; i++)
     {
-        if (kv1[i] == 0)
-            continue;
+        if (!((v1 >> i) & 1)) continue;
 
-        tmp.fill(0);
-
-        uint16_t res = 0;
-        for (int j = 0; j < kv2.size(); j++)
-            if (kv2[j] != 0)
-            {
-                tmp[i+j]++;
-                b = true;
-            }
-
-        if (b) parts.push_back(tmp);
-        b = false;
+        for (int j = 0; j < 16; j++)
+            if (((v2 >> j) & 1) != 0)
+                tmp ^= (1 << (i+j));
     }
 
-    tmp.fill(0);
-    for (auto & part : parts)
-        for (int i = 0; i < part.size(); i++)
-            tmp[i] += part[i];
+    if (0xFF00 & tmp)
+        for (int i = 8; i < 16; i++)
+            if (((tmp >> i) & 1))
+                tmp ^= ((poly & 0xFF) << (i-8));
 
-    for (int i = 8; i < tmp.size(); i++)
-    {
-        if (tmp[i] == 0 || tmp[i] % 2 == 0) continue;
-
-        tmp[4+(i-8)]++;
-        tmp[3+(i-8)]++;
-        tmp[1+(i-8)]++;
-        tmp[(i-8)]++;
-    }
-
-    for (auto & el : tmp)
-        el = (el % 2 == 0) ? 0 : 1;
-
-    uint16_t res = 0;
-    for (int i = 0; i < 8; i++)
-        if (tmp[i] != 0)
-            res += (1 << i);
-
-    return res;
+    return tmp;
 }
+
+// uint8_t Aes::dot2(uint8_t v1, uint8_t v2)
+// {
+//     // x^8 = x^4 + x^3 + x + 1
+
+//     // k1 + k2*x + k3*x^2 + k4*x^3 + k5*x^4 + k6*x^5 + k7*x^6 + k8*x^7
+//     std::array<uint16_t, 16> kv1 = { uint16_t(v1 & 0x01),        uint16_t((v1 & 0x02) >> 1),
+//                                      uint16_t((v1 & 0x04) >> 2), uint16_t((v1 & 0x08) >> 3),
+//                                      uint16_t((v1 & 0x10) >> 4), uint16_t((v1 & 0x20) >> 5),
+//                                      uint16_t((v1 & 0x40) >> 6), uint16_t((v1 & 0x80) >> 7),
+//                                      0, 0, 0, 0, 0, 0, 0, 0
+//                                    };
+
+//     // k1 + k2*x + k3*x^2 + k4*x^3 + k5*x^4 + k6*x^5 + k7*x^6 + k8*x^7
+//     std::array<uint16_t, 16> kv2 = { uint16_t(v2 & 0x01),        uint16_t((v2 & 0x02) >> 1),
+//                                      uint16_t((v2 & 0x04) >> 2), uint16_t((v2 & 0x08) >> 3),
+//                                      uint16_t((v2 & 0x10) >> 4), uint16_t((v2 & 0x20) >> 5),
+//                                      uint16_t((v2 & 0x40) >> 6), uint16_t((v2 & 0x80) >> 7),
+//                                     0, 0, 0, 0, 0, 0, 0, 0
+//                                    };
+
+//     //                                0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
+//     std::array<uint16_t, 16> poly = { 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0 };
+//     std::array<int16_t, 16> tmp;
+//     bool b = false;
+
+//     std::vector<std::array<int16_t, 16>> parts;
+//     for (int i = 0; i < kv1.size(); i++)
+//     {
+//         if (kv1[i] == 0)
+//             continue;
+
+//         tmp.fill(0);
+
+//         uint16_t res = 0;
+//         for (int j = 0; j < kv2.size(); j++)
+//             if (kv2[j] != 0)
+//             {
+//                 tmp[i+j]++;
+//                 b = true;
+//             }
+
+//         if (b) parts.push_back(tmp);
+//         b = false;
+//     }
+
+//     tmp.fill(0);
+//     for (auto & part : parts)
+//         for (int i = 0; i < part.size(); i++)
+//             tmp[i] += part[i];
+
+//     for (int i = 8; i < tmp.size(); i++)
+//     {
+//         if (tmp[i] == 0 || tmp[i] % 2 == 0) continue;
+
+//         tmp[4+(i-8)]++;
+//         tmp[3+(i-8)]++;
+//         tmp[1+(i-8)]++;
+//         tmp[(i-8)]++;
+//     }
+
+//     for (auto & el : tmp)
+//         el = (el % 2 == 0) ? 0 : 1;
+
+//     uint16_t res = 0;
+//     for (int i = 0; i < 8; i++)
+//         if (tmp[i] != 0)
+//             res += (1 << i);
+
+//     return res;
+// }
 
 word Aes::shiftLeft(const word & w, const int & n)
 {
@@ -210,8 +231,7 @@ void Aes::keyExpansion()
 matrix Aes::encryptRound(const matrix & state, const matrix & key, const int & rn)
 {
     matrix tmp = state;
-    // Pre round
-    // Only add inital key
+    // Pre round. Only add inital key
     if (rn == 0)
         return sumMatrix(state, key);
 
@@ -266,8 +286,7 @@ blck Aes::encryptBlck(const blck & input)
 matrix Aes::decryptRound(const matrix & state, const matrix & key, const int & rn)
 {
     matrix tmp = state;
-    // Pre round
-    // Only add inital key
+    // Pre round. Only add inital key
     if (rn == 0)
         return sumMatrix(state, key);
 
@@ -320,10 +339,10 @@ blck Aes::decryptBlck(const blck & input)
     return res;
 }
 
-bytearray Aes::encrypt(bytearray input, const MODE & mode, const blck & iv)
+bytearray Aes::encrypt(bytearray input, const MODE & mode)
 {
-    if (input.size() % iv.size() != 0)
-        input.insert(input.end(), (iv.size()-(input.size()%iv.size())), 0);
+    if (input.size() % blck_size != 0)
+        input.insert(input.end(), (blck_size-(input.size()%blck_size)), 0);
 
     bytearray output;
     blck tmp;
@@ -332,9 +351,9 @@ bytearray Aes::encrypt(bytearray input, const MODE & mode, const blck & iv)
     switch (mode)
     {
         case MODE::ECB:
-            for (int i = 0; i < input.size(); i += iv.size())
+            for (int i = 0; i < input.size(); i += blck_size)
             {
-                for (int j = 0; j < iv.size(); j++)
+                for (int j = 0; j < blck_size; j++)
                     tmp[j] = input[i+j];
 
                 tmp = encryptBlck(tmp);
@@ -345,10 +364,15 @@ bytearray Aes::encrypt(bytearray input, const MODE & mode, const blck & iv)
 
         case MODE::CBC:
         {
-            for (int i = 0; i < input.size(); i += iv.size())
+            if (!m_have_iv)
             {
-                for (int j = 0; j < iv.size(); j++)
-                    if (i == 0) tmp[j] = input[i+j] ^ iv[j];
+                std::cout << "Initial vector (IV) isnt set!" << std::endl;
+                return {};
+            }
+            for (int i = 0; i < input.size(); i += blck_size)
+            {
+                for (int j = 0; j < blck_size; j++)
+                    if (i == 0) tmp[j] = input[i+j] ^ m_iv[j];
                     else tmp[j] = input[i+j] ^ tmp[j];
 
                 tmp = encryptBlck(tmp);
@@ -365,7 +389,7 @@ bytearray Aes::encrypt(bytearray input, const MODE & mode, const blck & iv)
     return output;
 }
 
-bytearray Aes::decrypt(bytearray input, const MODE & mode, const blck & iv)
+bytearray Aes::decrypt(bytearray input, const MODE & mode)
 {
     bytearray output;
     blck tmp;
@@ -374,15 +398,15 @@ bytearray Aes::decrypt(bytearray input, const MODE & mode, const blck & iv)
     {
         case MODE::ECB:
         {
-            if (input.size() % iv.size() != 0)
+            if (input.size() % blck_size != 0)
             {
                 std::cout << "Wrong input size" << std::endl;
                 break;
             }
 
-            for (int i = 0; i < input.size(); i += iv.size())
+            for (int i = 0; i < input.size(); i += blck_size)
             {
-                for (int j = 0; j < iv.size(); j++)
+                for (int j = 0; j < blck_size; j++)
                     tmp[j] = input[i+j];
 
                 tmp = decryptBlck(tmp);
@@ -394,17 +418,23 @@ bytearray Aes::decrypt(bytearray input, const MODE & mode, const blck & iv)
             break;
         case MODE::CBC:
         {
+            if (!m_have_iv)
+            {
+                std::cout << "Initial vector (IV) isnt set!" << std::endl;
+                return {};
+            }
+
             blck prev_in;
-            for (int i = 0; i < input.size(); i += iv.size())
+            for (int i = 0; i < input.size(); i += blck_size)
             {
                 prev_in = tmp;
-                for (int j = 0; j < iv.size(); j++)
+                for (int j = 0; j < blck_size; j++)
                     tmp[j] = input[j+i];
 
                 tmp = decryptBlck(tmp);
 
                 for (int j = 0; j < tmp.size(); j++)
-                    if (i == 0) output.push_back(tmp[j] ^ iv[j]);
+                    if (i == 0) output.push_back(tmp[j] ^ m_iv[j]);
                     else output.push_back(tmp[j]);
             }
         }

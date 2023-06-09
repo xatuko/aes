@@ -24,20 +24,27 @@ class Aes
     ~Aes() { };
 
     // void setKey(const blck & key);
-    bytearray encrypt(bytearray input, const MODE & mode, const blck & iv);
-    bytearray decrypt(bytearray input, const MODE & mode, const blck & iv);
+    bytearray encrypt(bytearray input, const MODE & mode);
+    bytearray decrypt(bytearray input, const MODE & mode);
 
     void setKey(const blck & key)
     { m_key = key; keyExpansion(); m_have_key = true; }
 
+    void setIv(const blck & iv) { m_iv = iv; m_have_iv = true; }
+
   private:
   // Fields
     blck m_key;
+    blck m_iv;
+
     bool m_have_key { false };
+    bool m_have_iv  { false };
+
     MODE m_mode { MODE::ECB };
 
   // Methods
     uint8_t dot(uint8_t v1, uint8_t v2);
+    // uint8_t dot2(uint8_t v1, uint8_t v2);
 
     uint8_t subBytes(const uint8_t & byte)
     { return s_box[byte >> 4][byte & 0xF]; }
