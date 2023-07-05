@@ -3,5 +3,7 @@ project(aes VERSION 0.1.0)
 
 add_executable(aes main.cpp aes.cpp)
 
+target_link_libraries(aes PRIVATE crypto++)
+
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
